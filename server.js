@@ -156,17 +156,15 @@ app.post('/get-bill', async (req, res) => {
 
     // Click search and wait for the AJAX response to finish
     await Promise.all([
-      page.waitForNetworkIdle({ idleTime: 1500, timeout: 25000 })
+      page.waitForNetworkIdle({ idleTime: 500, timeout: 15000 })
         .catch(() => {
-          // waitForNetworkIdle may throw if it doesn't exist in this build;
-          // fall back to a timed wait
-          return new Promise(r => setTimeout(r, 4000));
+          // waitForNetworkIdle fallback
+          return new Promise(r => setTimeout(r, 1500));
         }),
       page.click('#btnSearch'),
     ]);
 
-    log(5, 'AJAX request completed. Giving page 2s to render...');
-    await new Promise(r => setTimeout(r, 2000));
+    log(5, 'AJAX request completed.');
 
     // ── STEP 6 ─ Check result ────────────────────────────
     log(6, 'Checking page for bill or error message...');
@@ -211,9 +209,9 @@ app.post('/get-bill', async (req, res) => {
     await page.waitForFunction(() => {
       const text = document.body.innerText.toUpperCase();
       return text.includes('BILL CALCULATION') || text.includes('SERVICE RENT');
-    }, { timeout: 15000 }).catch(() => log('WARN', 'Could not strict-match bill text. Continuing anyway.'));
+    }, { timeout: 8000 }).catch(() => log('WARN', 'Could not strict-match bill text. Continuing anyway.'));
 
-    await new Promise(r => setTimeout(r, 1000)); // Buffer for final paints
+    await new Promise(r => setTimeout(r, 300)); // Buffer for final paints
     
     // Scroll to the very top to ensure rendering is triggered for top elements
     await page.evaluate(() => window.scrollTo(0, 0));
@@ -227,8 +225,7 @@ app.post('/get-bill', async (req, res) => {
     let newHeight = boundingBox ? boundingBox.height : 2000;
     if (newHeight < 1500) newHeight = 2000;
 
-    await page.setViewport({ width: 1366, height: Math.ceil(newHeight) });
-    await new Promise(r => setTimeout(r, 500)); 
+    await page.setViewport({ width: 1366, height: Math.ceil(newHeight) }); 
 
     const screenshotBuffer = await page.screenshot({ type: 'png', fullPage: true });
 
