@@ -9,8 +9,20 @@
 
 const express  = require('express');
 const cors     = require('cors');
-const puppeteer = require('puppeteer');
 const path     = require('path');
+
+let puppeteer;
+let sparticuzChromium;
+
+// Check if we are running in a Vercel/serverless environment
+const isVercel = process.env.VERCEL || process.env.VERCEL_ENV;
+
+if (isVercel) {
+  puppeteer = require('puppeteer-core');
+  sparticuzChromium = require('@sparticuz/chromium');
+} else {
+  puppeteer = require('puppeteer');
+}
 
 const app  = express();
 const PORT = 3000;
@@ -64,18 +76,33 @@ app.post('/get-bill', async (req, res) => {
     // ── STEP 2 ─ Launch browser ──────────────────────────
     log(2, 'Launching headless Chromium browser...');
 
-    browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--disable-extensions',
-        '--window-size=1366,900',
-      ],
-      defaultViewport: { width: 1366, height: 900 },
-    });
+    if (isVercel) {
+      log(2, 'Using @sparticuz/chromium for Vercel serverless environment...');
+      // Optional: adjust graphics depending on limits
+      sparticuzChromium.setGraphicsMode = false;
+      
+      browser = await puppeteer.launch({
+        args: sparticuzChromium.args,
+        defaultViewport: sparticuzChromium.defaultViewport,
+        executablePath: await sparticuzChromium.executablePath(),
+        headless: sparticuzChromium.headless,
+        ignoreHTTPSErrors: true,
+      });
+    } else {
+      log(2, 'Using standard local Puppeteer...');
+      browser = await puppeteer.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--disable-extensions',
+          '--window-size=1366,900',
+        ],
+        defaultViewport: { width: 1366, height: 900 },
+      });
+    }
 
     const page = await browser.newPage();
 
