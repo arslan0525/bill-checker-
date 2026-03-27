@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MEPCO Bill Checker — Technical Gaps & Limitations | Analysis Article</title>
+  <meta name="description" content="A detailed technical analysis of the MEPCO Bill Checker app — identifying 11 gaps including bugs, security issues, and performance limitations." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css?v=3" />
+
+  <style>
+    /* ── Article-specific styles ── */
+    .article-hero {
+      background: linear-gradient(135deg, #1a4a1a 0%, #2d7a2d 100%);
+      color: #fff;
+      padding: 60px 0 40px;
+      text-align: center;
+    }
+    .article-hero .tag {
+      display: inline-block;
+      background: rgba(255,255,255,0.18);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 18px;
+    }
+    .article-hero h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin: 0 0 14px;
+      line-height: 1.3;
+    }
+    .article-hero p {
+      font-size: 1rem;
+      opacity: 0.85;
+      max-width: 580px;
+      margin: 0 auto 20px;
+    }
+    .article-meta {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      font-size: 0.82rem;
+      opacity: 0.7;
+      flex-wrap: wrap;
+    }
+    .article-body {
+      max-width: 780px;
+      margin: 40px auto 60px;
+      padding: 0 20px;
+    }
+    .gap-card {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-left: 5px solid #ccc;
+      border-radius: 8px;
+      padding: 24px 28px;
+      margin-bottom: 28px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .gap-card.critical { border-left-color: #dc2626; }
+    .gap-card.high     { border-left-color: #f97316; }
+    .gap-card.medium   { border-left-color: #eab308; }
+    .gap-card.low      { border-left-color: #22c55e; }
+
+    .gap-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .gap-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+    .badge-critical { background: #fee2e2; color: #dc2626; }
+    .badge-high     { background: #ffedd5; color: #c2410c; }
+    .badge-medium   { background: #fef9c3; color: #92400e; }
+    .badge-low      { background: #dcfce7; color: #166534; }
+
+    .gap-card h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin: 0;
+    }
+    .gap-card p {
+      color: #444;
+      font-size: 0.93rem;
+      line-height: 1.7;
+      margin: 0 0 12px;
+    }
+    .gap-card code {
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      padding: 0 5px;
+      font-size: 0.85em;
+      color: #374151;
+    }
+    .code-block {
+      background: #1e1e2e;
+      color: #cdd6f4;
+      border-radius: 8px;
+      padding: 16px 18px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.83rem;
+      line-height: 1.6;
+      overflow-x: auto;
+      margin: 12px 0;
+    }
+    .code-block .bad  { color: #f38ba8; }
+    .code-block .good { color: #a6e3a1; }
+    .code-block .cmt  { color: #6c7086; }
+
+    .fix-tip {
+      background: #f0fdf4;
+      border: 1px solid #86efac;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 0.88rem;
+      color: #166534;
+      margin-top: 10px;
+    }
+    .fix-tip strong { color: #15803d; }
+
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      margin: 30px 0;
+      background: #fff;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+    }
+    .summary-table th {
+      background: #1e3a1e;
+      color: #fff;
+      padding: 12px 16px;
+      text-align: left;
+      font-weight: 600;
+    }
+    .summary-table td {
+      padding: 11px 16px;
+      border-bottom: 1px solid #f0f0f0;
+      color: #333;
+    }
+    .summary-table tr:last-child td { border-bottom: none; }
+    .summary-table tr:nth-child(even) td { background: #fafafa; }
+
+    .conclusion-box {
+      background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+      border: 1px solid #86efac;
+      border-radius: 10px;
+      padding: 24px 28px;
+      margin-top: 30px;
+    }
+    .conclusion-box h3 { color: #166534; font-size: 1.05rem; margin: 0 0 10px; }
+    .conclusion-box p  { color: #374151; font-size: 0.93rem; line-height: 1.7; margin: 0; }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #2d7a2d;
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-decoration: none;
+      margin-bottom: 30px;
+      transition: gap 0.2s;
+    }
+    .back-btn:hover { gap: 12px; }
+
+    @media (max-width: 600px) {
+      .article-hero h1 { font-size: 1.4rem; }
+      .gap-card { padding: 18px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top bar -->
+  <div class="top-bar">
+    <div class="container">
+      Welcome to Multan Electric Power Company
+      <span class="top-links">
+        <a href="#">Tenders</a> |
+        <a href="#">Jobs</a> |
+        <a href="#">Support</a>
+      </span>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="site-header">
+    <div class="container header-container">
+      <div class="brand">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" class="mepco-logo" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+          <path d="M2 17l10 5 10-5M2 12l10 5 10-5"></path>
+        </svg>
+        <div class="brand-text">
+          <h1>MEPCO <span>Bill Checker</span></h1>
+          <p>Official Online Duplicate Bill Portal</p>
+        </div>
+      </div>
+      <div class="helpline">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+        <span>Helpline: 118</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation -->
+  <nav class="main-nav">
+    <div class="container">
+      <a href="/">Duplicate Bill</a>
+      <a href="#">New Connection</a>
+      <a href="#">Tariff Info</a>
+      <a href="#">Complaint Management</a>
+      <a href="/article.html" class="active">Tech Article</a>
+    </div>
+  </nav>
+
+  <!-- Article Hero -->
+  <div class="article-hero">
+    <div class="container">
+      <div class="tag">📄 Technical Analysis</div>
+      <h1>MEPCO Bill Checker — Gaps &amp; Limitations</h1>
+      <p>A deep-dive into the current codebase identifying 11 critical bugs, security issues, and architectural weaknesses.</p>
+      <div class="article-meta">
+        <span>📅 March 2026</span>
+        <span>⏱ 5 min read</span>
+        <span>🔍 11 Gaps Found</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Article Body -->
+  <main class="article-body">
+
+    <a href="/" class="back-btn">← Back to Bill Checker</a>
+
+    <!-- Gap 1 -->
+    <div class="gap-card critical">
+      <div class="gap-header">
+        <span class="gap-badge badge-critical">🔴 Critical</span>
+        <h3>Gap 1 — Undefined Variable Bug (Server Crash)</h3>
+      </div>
+      <p>In <code>server.js</code> line 160, a variable called <code>referenceNumber</code> is used — but it was never declared. The correct variable is <code>searchValue</code>.</p>
+      <div class="code-block">
+<span class="bad">// ❌ Wrong — crashes the server</span>
+error: `No bill found for reference number <span class="bad">${referenceNumber}</span>.`
+
+<span class="good">// ✅ Correct</span>
+error: `No bill found for reference number <span class="good">${searchValue}</span>.`
+      </div>
+      <p>When the MEPCO portal returns a "bill not found" response, this path executes and throws a <code>ReferenceError</code> — returning a 500 error instead of a clean 404.</p>
+      <div class="fix-tip"><strong>Fix:</strong> Replace <code>referenceNumber</code> with <code>searchValue</code> on line 160.</div>
+    </div>
+
+    <!-- Gap 2 -->
+    <div class="gap-card high">
+      <div class="gap-header">
+        <span class="gap-badge badge-high">🟠 High</span>
+        <h3>Gap 2 — New Browser Launched for Every Request</h3>
+      </div>
+      <p>A full Chromium browser is spawned on every single request. This adds 3–5 seconds of overhead, consumes heavy RAM/CPU, and causes server collapse under even light concurrent load.</p>
+      <div class="code-block">
+<span class="cmt">// This runs on EVERY request 😬</span>
+browser = await puppeteer.launch({ headless: true, ... });
+      </div>
+      <div class="fix-tip"><strong>Fix:</strong> Launch one browser at startup and reuse pages (browser pool pattern).</div>
+    </div>
+
+    <!-- Gap 3 -->
+    <div class="gap-card high">
+      <div class="gap-header">
+        <span class="gap-badge badge-high">🟠 High</span>
+        <h3>Gap 3 — No Rate Limiting or Concurrency Control</h3>
+      </div>
+      <p>There is no rate limiter, request queue, or browser cap. Any user can flood the server with hundreds of requests, launching dozens of Chromium instances simultaneously until the server crashes.</p>
+      <div class="fix-tip"><strong>Fix:</strong> Use <code>express-rate-limit</code> and cap concurrent Puppeteer sessions to 2–3 max.</div>
+    </div>
+
+    <!-- Gap 4 -->
+    <div class="gap-card medium">
+      <div class="gap-header">
+        <span class="gap-badge badge-medium">🟡 Medium</span>
+        <h3>Gap 4 — Fragile Page-Load Detection (Race Condition)</h3>
+      </div>
+      <p><code>domcontentloaded</code> only waits for raw HTML — not JavaScript-rendered content. The MEPCO portal is ASP.NET AJAX; the bill is injected after the initial HTML. The fallback is a blind 4-second sleep, which is unreliable — sometimes the screenshot fires before the bill is rendered.</p>
+      <div class="code-block">
+<span class="cmt">// Unreliable fallback</span>
+<span class="bad">.catch(() => new Promise(r => setTimeout(r, 4000)));</span>
+      </div>
+    </div>
+
+    <!-- Gap 5 -->
+    <div class="gap-card medium">
+      <div class="gap-header">
+        <span class="gap-badge badge-medium">🟡 Medium</span>
+        <h3>Gap 5 — Screenshot Only, No Structured Data</h3>
+      </div>
+      <p>The API returns the entire bill as a base64-encoded PNG (often 500KB–2MB). No machine-readable data is extracted — making features like bill history, SMS reminders, or auto-pay impossible to build.</p>
+      <div class="fix-tip"><strong>Fix:</strong> Parse bill HTML with <code>cheerio</code> and return structured JSON alongside (or instead of) the image.</div>
+    </div>
+
+    <!-- Gap 6 -->
+    <div class="gap-card medium">
+      <div class="gap-header">
+        <span class="gap-badge badge-medium">🟡 Medium</span>
+        <h3>Gap 6 — Retry Button Doesn't Actually Retry</h3>
+      </div>
+      <p>The Retry button triggers <code>checkBtn.click()</code>, which re-validates the current input. If the user has cleared or changed the field, it fails with a validation error instead of repeating the last search.</p>
+      <div class="fix-tip"><strong>Fix:</strong> Store the last valid <code>{ searchType, searchValue }</code> and re-use on retry.</div>
+    </div>
+
+    <!-- Gap 7 -->
+    <div class="gap-card medium">
+      <div class="gap-header">
+        <span class="gap-badge badge-medium">🟡 Medium</span>
+        <h3>Gap 7 — "Download PDF" Actually Downloads a PNG</h3>
+      </div>
+      <p>The button is labeled <strong>"Download PDF / Print"</strong> but delivers a <code>.png</code> image file. This is misleading and doesn't meet user expectations for an official document.</p>
+      <div class="fix-tip"><strong>Fix:</strong> Relabel the button "Save as Image" or generate a real PDF using <code>jsPDF</code>.</div>
+    </div>
+
+    <!-- Gap 8 -->
+    <div class="gap-card low">
+      <div class="gap-header">
+        <span class="gap-badge badge-low">🟢 Low</span>
+        <h3>Gap 8 — All Navigation Links Are Dead</h3>
+      </div>
+      <p>Every link in the header and navigation bar points to <code>#</code> and goes nowhere. The site presents as an official MEPCO portal but provides no actual navigation — confusing real users.</p>
+    </div>
+
+    <!-- Gap 9 -->
+    <div class="gap-card medium">
+      <div class="gap-header">
+        <span class="gap-badge badge-medium">🟡 Medium</span>
+        <h3>Gap 9 — CORS Is Fully Open</h3>
+      </div>
+      <p>The server uses <code>app.use(cors())</code> with no origin restrictions — any website on the internet can call this API.</p>
+      <div class="code-block">
+<span class="bad">app.use(cors()); // all origins allowed ❌</span>
+<span class="good">app.use(cors({ origin: 'https://yourdomain.com' })); // ✅</span>
+      </div>
+    </div>
+
+    <!-- Gap 10 -->
+    <div class="gap-card medium">
+      <div class="gap-header">
+        <span class="gap-badge badge-medium">🟡 Medium</span>
+        <h3>Gap 10 — Browser Memory Leak on Success-Path Errors</h3>
+      </div>
+      <p><code>browser.close()</code> is only called manually inside the <code>try</code> block. If any exception occurs after a successful fetch but before closure, the Chromium process is left running — accumulating zombie processes over time.</p>
+      <div class="code-block">
+<span class="cmt">// Move to finally to guarantee cleanup</span>
+<span class="good">} finally {
+  if (browser) { try { await browser.close(); } catch {} }
+}</span>
+      </div>
+    </div>
+
+    <!-- Gap 11 -->
+    <div class="gap-card high">
+      <div class="gap-header">
+        <span class="gap-badge badge-high">🟠 High</span>
+        <h3>Gap 11 — Vercel Deployment Will Fail</h3>
+      </div>
+      <p>A <code>vercel.json</code> exists in the repo — but Vercel serverless functions have a <strong>50MB size limit</strong> while Chromium alone is ~200MB. Deployment will be rejected automatically.</p>
+      <div class="fix-tip"><strong>Fix:</strong> Deploy on Railway / Render / VPS, or use <code>@sparticuz/chromium</code> for a Vercel-compatible lightweight build.</div>
+    </div>
+
+    <!-- Summary Table -->
+    <h2 style="font-size:1.2rem; color:#1a1a1a; margin: 40px 0 16px;">Summary of All Gaps</h2>
+    <table class="summary-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Gap</th>
+          <th>Severity</th>
+          <th>Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>Undefined variable — server crash</td><td>🔴 Critical</td><td>Bug</td></tr>
+        <tr><td>2</td><td>New browser per request</td><td>🟠 High</td><td>Performance</td></tr>
+        <tr><td>3</td><td>No rate limiting</td><td>🟠 High</td><td>Security</td></tr>
+        <tr><td>4</td><td>Unreliable page-load detection</td><td>🟡 Medium</td><td>Reliability</td></tr>
+        <tr><td>5</td><td>Screenshot only, no structured data</td><td>🟡 Medium</td><td>Architecture</td></tr>
+        <tr><td>6</td><td>Retry button broken</td><td>🟡 Medium</td><td>UX Bug</td></tr>
+        <tr><td>7</td><td>PDF button returns PNG</td><td>🟡 Medium</td><td>UX / Labeling</td></tr>
+        <tr><td>8</td><td>Dead navigation links</td><td>🟢 Low</td><td>UX</td></tr>
+        <tr><td>9</td><td>CORS fully open</td><td>🟡 Medium</td><td>Security</td></tr>
+        <tr><td>10</td><td>Browser memory leak</td><td>🟡 Medium</td><td>Memory</td></tr>
+        <tr><td>11</td><td>Vercel deployment incompatible</td><td>🟠 High</td><td>Deployment</td></tr>
+      </tbody>
+    </table>
+
+    <!-- Conclusion -->
+    <div class="conclusion-box">
+      <h3>✅ Conclusion</h3>
+      <p>The core concept is sound and basic functionality works. To make this production-ready, fix in priority order: crash bug (#1) → rate limiting (#3) → browser lifecycle (#2, #10) → deployment issue (#11) → then improve architecture and UX.</p>
+    </div>
+
+    <div style="margin-top: 40px; text-align: center;">
+      <a href="/" class="btn btn-primary" style="display:inline-block; text-decoration:none; padding: 12px 30px;">← Back to Bill Checker</a>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <p>&copy; 2024 Multan Electric Power Company. All Rights Reserved.</p>
+      <div class="footer-links">
+        <a href="#">Privacy Policy</a>
+        <a href="#">Terms of Service</a>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
