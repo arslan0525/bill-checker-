@@ -182,7 +182,7 @@ app.post('/get-bill', async (req, res) => {
       await browser.close();
       return res.status(404).json({
         success: false,
-        error: `No bill found for reference number ${referenceNumber}. ` +
+        error: `No bill found for reference number ${searchValue}. ` +
                `Make sure it is a MEPCO reference number printed on your electricity bill.`,
       });
     }

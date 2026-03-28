@@ -17,6 +17,9 @@
     "nodemon": "^3.0.2",
     "puppeteer": "^24.40.0"
   },
+  "engines": {
+    "node": "18.x"
+  },
   "author": "MEPCO Bill Checker",
   "license": "ISC"
 }

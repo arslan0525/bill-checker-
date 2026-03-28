@@ -16,9 +16,9 @@
     }
   },
   "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/server.js"
-    }
+    { "source": "/", "destination": "/public/index.html" },
+    { "source": "/get-bill", "destination": "/server.js" },
+    { "source": "/health", "destination": "/server.js" },
+    { "source": "/(.*)", "destination": "/public/$1" }
   ]
 }
