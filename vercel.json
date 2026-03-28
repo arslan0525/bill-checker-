@@ -1,1 +1,24 @@
-{}
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "server.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "public/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "functions": {
+    "server.js": {
+      "maxDuration": 60
+    }
+  },
+  "rewrites": [
+    { "source": "/", "destination": "/public/index.html" },
+    { "source": "/get-bill", "destination": "/server.js" },
+    { "source": "/health", "destination": "/server.js" },
+    { "source": "/(.*)", "destination": "/public/$1" }
+  ]
+}
