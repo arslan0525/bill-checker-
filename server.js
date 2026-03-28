@@ -167,22 +167,30 @@ app.post('/get-bill', async (req, res) => {
 
     log(5, 'AJAX request completed.');
 
-    // ── STEP 6 ─ Wait for Loading Screen to Disappear ────
-    log(6, 'Waiting for loading screen to complete...');
+    // ── STEP 6 ─ Wait for Bill or Error ─────────────────
+    log(6, 'Waiting for bill to render or error to appear...');
     
-    // The MEPCO portal shows "Your bill is loading ...". We must wait for this to vanish.
-    await page.waitForFunction(() => {
-      const text = document.body.innerText.toLowerCase();
-      return !text.includes('your bill is loading') && !text.includes('fetching');
-    }, { timeout: 25000 }).catch(() => log('WARN', 'Loading wait timed out, proceeding anyway.'));
+    // We wait for either the 'Print' button (success) OR the error text (fail)
+    const result = await Promise.race([
+      page.waitForSelector('button.btn-secondary', { timeout: 25000 }).then(() => 'success'),
+      page.waitForFunction(() => {
+        const text = document.body ? document.body.innerText.toLowerCase() : "";
+        return text.includes('does not belong') || text.includes('not valid') || text.includes('no record') || text.includes('invalid');
+      }, { timeout: 25000 }).then(() => 'error'),
+    ]).catch(err => {
+      log('WARN', `Wait timed out or failed: ${err.message}`);
+      return 'timeout';
+    });
 
-    // Give an extra 1.5 seconds for final paints and AJAX transitions
-    await new Promise(r => setTimeout(r, 1500));
+    log(6, `Result detection: ${result}`);
+
+    // Give a small buffer for final elements
+    await new Promise(r => setTimeout(r, 1000));
 
     // ── STEP 7 ─ Check result ────────────────────────────
-    log(7, 'Checking page for bill or error message...');
+    log(7, 'Checking final page state...');
 
-    const pageText = (await page.evaluate(() => document.body.innerText)).toLowerCase();
+    const pageText = (await page.evaluate(() => document.body ? document.body.innerText : "")).toLowerCase();
 
     if (
       pageText.includes('does not belong') ||
