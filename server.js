@@ -91,7 +91,8 @@ app.post('/get-bill', async (req, res) => {
     } else {
       log(2, 'Using standard local Puppeteer...');
       browser = await puppeteer.launch({
-        headless: true,
+        headless: 'new',
+        executablePath: 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -166,8 +167,20 @@ app.post('/get-bill', async (req, res) => {
 
     log(5, 'AJAX request completed.');
 
-    // ── STEP 6 ─ Check result ────────────────────────────
-    log(6, 'Checking page for bill or error message...');
+    // ── STEP 6 ─ Wait for Loading Screen to Disappear ────
+    log(6, 'Waiting for loading screen to complete...');
+    
+    // The MEPCO portal shows "Your bill is loading ...". We must wait for this to vanish.
+    await page.waitForFunction(() => {
+      const text = document.body.innerText.toLowerCase();
+      return !text.includes('your bill is loading') && !text.includes('fetching');
+    }, { timeout: 25000 }).catch(() => log('WARN', 'Loading wait timed out, proceeding anyway.'));
+
+    // Give an extra 1.5 seconds for final paints and AJAX transitions
+    await new Promise(r => setTimeout(r, 1500));
+
+    // ── STEP 7 ─ Check result ────────────────────────────
+    log(7, 'Checking page for bill or error message...');
 
     const pageText = (await page.evaluate(() => document.body.innerText)).toLowerCase();
 
@@ -187,32 +200,6 @@ app.post('/get-bill', async (req, res) => {
       });
     }
 
-    // Quick sanity check — must see SOME bill-related keywords
-    const hasBill =
-      pageText.includes('amount') ||
-      pageText.includes('units') ||
-      pageText.includes('consumer') ||
-      pageText.includes('due') ||
-      pageText.includes('bill') ||
-      pageText.includes('payable');
-
-    if (!hasBill) {
-      log('ERR', 'Page does not appear to contain bill data.');
-    } else {
-      log('OK', 'Bill data detected on page!');
-    }
-
-    // ── STEP 7 ─ Wait for Loading Screen to Disappear ────
-    log(7, 'Ensuring actual bill is fully rendered...');
-    
-    // Explicitly wait until the "loading" bar is gone and actual bill text appears
-    await page.waitForFunction(() => {
-      const text = document.body.innerText.toUpperCase();
-      return text.includes('BILL CALCULATION') || text.includes('SERVICE RENT');
-    }, { timeout: 8000 }).catch(() => log('WARN', 'Could not strict-match bill text. Continuing anyway.'));
-
-    await new Promise(r => setTimeout(r, 300)); // Buffer for final paints
-    
     // Scroll to the very top to ensure rendering is triggered for top elements
     await page.evaluate(() => window.scrollTo(0, 0));
 

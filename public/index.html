@@ -118,7 +118,19 @@
       </section>
 
       <!-- Right Column: Instructions Sidebar -->
-      <aside class="info-sidebar panel">
+      <aside class="info-sidebar">
+        <!-- Search History Panel -->
+        <div class="panel history-panel mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="panel-title mb-0">Search History</h2>
+            <button id="clearHistoryBtn" class="btn btn-sm btn-outline" style="padding: 2px 8px; font-size: 0.8rem; display: none;">Clear</button>
+          </div>
+          <div id="historyList" class="history-list">
+            <p class="text-muted small">No recent searches.</p>
+          </div>
+        </div>
+
+        <div class="panel">
         <h2 class="panel-title">Where to find these numbers?</h2>
         <div class="info-block">
           <h4>Reference Number</h4>

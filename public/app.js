@@ -18,8 +18,11 @@ billImage.className = 'img-responsive';
 const downloadBtn    = document.getElementById('downloadBtn');
 const newSearchBtn   = document.getElementById('newSearchBtn');
 const retryBtn       = document.getElementById('retryBtn');
+const historyList    = document.getElementById('historyList');
+const clearHistoryBtn = document.getElementById('clearHistoryBtn');
 
 let currentBase64 = null;
+let searchHistory = [];
 
 // ── Event Listeners ──────────────────────────────────────────
 
@@ -67,6 +70,72 @@ function clearInputError() {
   searchInput.classList.remove('is-invalid');
 }
 
+// ── HISTORY LOGIC ──────────────────────────────────────────
+function loadHistory() {
+  const saved = localStorage.getItem('mepco_history');
+  if (saved) {
+    searchHistory = JSON.parse(saved);
+    renderHistory();
+  }
+}
+
+function saveToHistory(type, value) {
+  // Remove duplicate if exists
+  searchHistory = searchHistory.filter(item => item.value !== value);
+  // Add to front
+  searchHistory.unshift({ type, value, date: new Date().toLocaleDateString() });
+  // Keep last 5
+  if (searchHistory.length > 5) searchHistory.pop();
+  
+  localStorage.setItem('mepco_history', JSON.stringify(searchHistory));
+  renderHistory();
+}
+
+function renderHistory() {
+  if (searchHistory.length === 0) {
+    historyList.innerHTML = '<p class="text-muted small">No recent searches.</p>';
+    clearHistoryBtn.style.display = 'none';
+    return;
+  }
+
+  clearHistoryBtn.style.display = 'block';
+  historyList.innerHTML = '';
+  
+  searchHistory.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'history-item';
+    const label = item.type === 'refno' ? 'Ref' : 'ID';
+    
+    div.innerHTML = `
+      <div class="history-info" onclick="useHistoryItem('${item.value}', '${item.type}')">
+        <strong>${item.value}</strong>
+        <span>${label} • ${item.date}</span>
+      </div>
+      <button class="history-delete" onclick="deleteHistoryItem('${item.value}')">&times;</button>
+    `;
+    historyList.appendChild(div);
+  });
+}
+
+function useHistoryItem(value, type) {
+  const radio = document.querySelector(`input[name="searchType"][value="${type}"]`);
+  radio.checked = true;
+  radio.dispatchEvent(new Event('change'));
+  searchInput.value = value;
+  billForm.dispatchEvent(new Event('submit'));
+}
+
+function deleteHistoryItem(value) {
+  searchHistory = searchHistory.filter(item => item.value !== value);
+  localStorage.setItem('mepco_history', JSON.stringify(searchHistory));
+  renderHistory();
+}
+
+window.useHistoryItem = useHistoryItem;
+window.deleteHistoryItem = deleteHistoryItem;
+
+loadHistory();
+
 // ── Form Submit ──────────────────────────────────────────────
 billForm.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -112,6 +181,8 @@ billForm.addEventListener('submit', async (e) => {
       pdfContainer.innerHTML = '';
       pdfContainer.appendChild(billImage);
       
+      saveToHistory(searchType, searchValue);
+      
       resultSection.style.display = 'block';
       // Scroll to result naturally
       resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -140,6 +211,12 @@ newSearchBtn.addEventListener('click', () => {
   searchInput.value = '';
   searchInput.focus();
   window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+clearHistoryBtn.addEventListener('click', () => {
+  searchHistory = [];
+  localStorage.removeItem('mepco_history');
+  renderHistory();
 });
 
 downloadBtn.addEventListener('click', () => {
